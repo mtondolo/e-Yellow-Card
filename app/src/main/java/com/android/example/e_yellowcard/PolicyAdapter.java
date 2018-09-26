@@ -11,6 +11,26 @@ public class PolicyAdapter extends RecyclerView.Adapter<PolicyAdapter.PolicyAdap
 
     private String[] mPolicyData;
 
+    /*
+     * An on-click handler that we've defined to make it easy for an Activity to interface with
+     * our RecyclerView
+     */
+    private final PolicyAdapterOnClickHandler mClickHandler;
+
+    /**
+     * The interface that receives onClick messages.
+     */
+    public interface PolicyAdapterOnClickHandler {
+        void onClick(String policyItem);
+    }
+
+    /**
+     * Creates a NewsAdapter.
+     */
+    public PolicyAdapter(PolicyAdapterOnClickHandler clickHandler) {
+        mClickHandler = clickHandler;
+    }
+
     /**
      * This gets called when each new ViewHolder is created.
      */
@@ -53,7 +73,7 @@ public class PolicyAdapter extends RecyclerView.Adapter<PolicyAdapter.PolicyAdap
     /**
      * Cache of the children views for a policy list item.
      */
-    public class PolicyAdapterViewHolder extends RecyclerView.ViewHolder {
+    public class PolicyAdapterViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         public final TextView mPolicyTextView;
 
@@ -63,11 +83,19 @@ public class PolicyAdapter extends RecyclerView.Adapter<PolicyAdapter.PolicyAdap
 
             // Get a reference to this layout's TextView and save it to mPolicyTextView
             mPolicyTextView = (TextView) view.findViewById(R.id.tv_policy_data);
+            view.setOnClickListener(this);
+        }
+
+        @Override
+        public void onClick(View v) {
+            int adapterPosition = getAdapterPosition();
+            String policyItem = mPolicyData[adapterPosition];
+            mClickHandler.onClick(policyItem);
         }
     }
 
     /**
-     * This method is used to set the news on a PolicyAdapter if we've already created one.
+     * This method is used to set the policy on a PolicyAdapter if we've already created one.
      */
     public void setPolicyData(String[] policyData) {
         mPolicyData = policyData;
