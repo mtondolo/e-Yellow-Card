@@ -1,5 +1,6 @@
 package com.android.example.e_yellowcard;
 
+import android.content.Context;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -8,13 +9,14 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.example.e_yellowcard.utils.JSONUtils;
 import com.android.example.e_yellowcard.utils.NetworkUtils;
 
 import java.net.URL;
 
-public class PolicyActivity extends AppCompatActivity {
+public class PolicyActivity extends AppCompatActivity implements PolicyAdapter.PolicyAdapterOnClickHandler {
 
     private RecyclerView mRecyclerView;
     private PolicyAdapter mPolicyAdapter;
@@ -61,7 +63,7 @@ public class PolicyActivity extends AppCompatActivity {
          * The NewsAdapter is responsible for linking our news data with the Views that will end up
          * displaying our news data.
          */
-        mPolicyAdapter = new PolicyAdapter();
+        mPolicyAdapter = new PolicyAdapter(this);
 
         /*
          * Use mRecyclerView.setAdapter and pass in mNewsAdapter.
@@ -71,6 +73,7 @@ public class PolicyActivity extends AppCompatActivity {
 
         /* Once all of our views are setup, we can load the weather data. */
         loadYCPolicyData();
+
     }
 
     /**
@@ -99,6 +102,17 @@ public class PolicyActivity extends AppCompatActivity {
         mRecyclerView.setVisibility(View.INVISIBLE);
         /* Then, show the error */
         mErrorMessageDisplay.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * This method is overridden by the NewsActivity class in order to handle RecyclerView item
+     * clicks.
+     */
+    @Override
+    public void onClick(String policyItem) {
+        Context context = this;
+        Toast.makeText(context, policyItem, Toast.LENGTH_SHORT)
+                .show();
     }
 
     public class FetchYCPolicyTask extends AsyncTask<String, Void, String[]> {
