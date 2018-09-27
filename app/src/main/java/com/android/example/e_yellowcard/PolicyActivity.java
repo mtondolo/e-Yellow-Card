@@ -1,7 +1,10 @@
 package com.android.example.e_yellowcard;
 
+import android.support.v4.app.LoaderManager.LoaderCallbacks;
+import android.support.v4.content.AsyncTaskLoader;
 import android.content.Context;
-import android.os.AsyncTask;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -16,12 +19,15 @@ import com.android.example.e_yellowcard.utils.NetworkUtils;
 
 import java.net.URL;
 
-public class PolicyActivity extends AppCompatActivity implements PolicyAdapter.PolicyAdapterOnClickHandler {
+public class PolicyActivity extends AppCompatActivity implements
+        PolicyAdapter.PolicyAdapterOnClickHandler,
+        LoaderManager.LoaderCallbacks<String[]> {
 
     private RecyclerView mRecyclerView;
     private PolicyAdapter mPolicyAdapter;
     private TextView mErrorMessageDisplay;
     private ProgressBar mLoadingIndicator;
+    private static final int POLICY_LOADER_ID = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,23 +77,27 @@ public class PolicyActivity extends AppCompatActivity implements PolicyAdapter.P
          */
         mRecyclerView.setAdapter(mPolicyAdapter);
 
-        /* Once all of our views are setup, we can load the weather data. */
-        loadYCPolicyData();
+        // This ID will uniquely identify the Loader.
+        int loaderId = POLICY_LOADER_ID;
 
-    }
+        /*
+         * From PolicyActivity, we have implemented the LoaderCallbacks interface with the type of
+         * String array.
+         */
+        LoaderCallbacks<String[]> callback = PolicyActivity.this;
 
-    /**
-     * This method will tell some background method to get the policy data in the background.
-     */
-    private void loadYCPolicyData() {
-        showYCPolicyDataView();
-        new FetchYCPolicyTask().execute();
+        // The second parameter of the initLoader method below is a Bundle.
+        Bundle bundleForLoader = null;
+
+        // Ensures a loader is initialized and active.
+        getSupportLoaderManager().initLoader(loaderId, bundleForLoader, callback);
+
     }
 
     /**
      * This method will make the View for the news data visible and hide the error message.
      */
-    private void showYCPolicyDataView() {
+    private void showPolicyDataView() {
         /* First, make sure the error is invisible */
         mErrorMessageDisplay.setVisibility(View.INVISIBLE);
         /* Then, make sure the policy data is visible */
@@ -115,43 +125,89 @@ public class PolicyActivity extends AppCompatActivity implements PolicyAdapter.P
                 .show();
     }
 
-    public class FetchYCPolicyTask extends AsyncTask<String, Void, String[]> {
+    /**
+     * Instantiate and return a new Loader for the given ID.
+     */
+    @Override
+    public Loader<String[]> onCreateLoader(int id, Bundle loaderArgs) {
 
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mLoadingIndicator.setVisibility(View.VISIBLE);
+        return new AsyncTaskLoader<String[]>(this) {
 
-        }
+            /* This String array will hold and help cache our policy data */
+            String[] mPolicyData = null;
 
-        @Override
-        protected String[] doInBackground(String... params) {
-            URL ycPolicyRequestUrl = NetworkUtils.buildYCPoliciesUrl();
-            try {
-                String jsonYCPolicyResponse = NetworkUtils
-                        .getResponseFromHttpUrl(ycPolicyRequestUrl);
-
-                String[] simpleJsonYCPolicyData = JSONUtils
-                        .getSimpleYCPolicyStringFromJson(PolicyActivity.this, jsonYCPolicyResponse);
-                return simpleJsonYCPolicyData;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
+            /**
+             * Subclasses of AsyncTaskLoader must implement this to take care of loading their data.
+             */
+            @Override
+            protected void onStartLoading() {
+                if (mPolicyData != null) {
+                    deliverResult(mPolicyData);
+                } else {
+                    mLoadingIndicator.setVisibility(View.VISIBLE);
+                    forceLoad();
+                }
             }
-        }
 
-        @Override
-        protected void onPostExecute(String[] ycPolicyData) {
-            mLoadingIndicator.setVisibility(View.INVISIBLE);
-            if (ycPolicyData != null) {
-                showYCPolicyDataView();
-                mPolicyAdapter.setPolicyData(ycPolicyData);
-            } else {
-                showErrorMessage();
+            /**
+             * This is the method of the AsyncTaskLoader that will load and parse the JSON data
+             * from Policy API in the background.
+             */
+            @Override
+            public String[] loadInBackground() {
+                URL ycPolicyRequestUrl = NetworkUtils.buildYCPoliciesUrl();
+                try {
+                    String jsonYCPolicyResponse = NetworkUtils
+                            .getResponseFromHttpUrl(ycPolicyRequestUrl);
+
+                    String[] simpleJsonYCPolicyData = JSONUtils
+                            .getSimpleYCPolicyStringFromJson(PolicyActivity.this, jsonYCPolicyResponse);
+                    return simpleJsonYCPolicyData;
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return null;
+                }
             }
-        }
+
+            /**
+             * Sends the result of the load to the registered listener.
+             */
+            @Override
+            public void deliverResult(String[] data) {
+                mPolicyData = data;
+                super.deliverResult(data);
+            }
+        };
     }
+
+    /**
+     * Called when a previously created loader has finished its load.
+     */
+    @Override
+    public void onLoadFinished(Loader<String[]> loader, String[] data) {
+        mLoadingIndicator.setVisibility(View.INVISIBLE);
+        mPolicyAdapter.setPolicyData(data);
+        if (null == data) {
+            showErrorMessage();
+        } else {
+            showPolicyDataView();
+        }
+
+    }
+
+    /**
+     * Called when a previously created loader is being reset, and thus
+     * making its data unavailable.
+     */
+    @Override
+    public void onLoaderReset(Loader<String[]> loader) {
+        /*
+         * We aren't using this method at the moment, but we are required to Override
+         * it to implement the LoaderCallbacks<String> interface
+         */
+    }
+
 }
 
 
