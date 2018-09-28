@@ -25,6 +25,8 @@
             android:name=".data.PolicyProvider"
             android:authorities="@string/content_authority"
             android:exported="false" />
+        <service
+            android:name=".sync.PolicySyncIntentService"
+            android:exported="false" />
     </application>
-
 </manifest>
