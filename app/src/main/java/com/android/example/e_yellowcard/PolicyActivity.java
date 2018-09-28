@@ -57,6 +57,7 @@ public class PolicyActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_policy);
+        getSupportActionBar().setElevation(0f);
 
         /*
          * Using findViewById, we get a reference to our RecyclerView from xml. This allows us to
@@ -103,7 +104,9 @@ public class PolicyActivity extends AppCompatActivity implements
         // Ensures a loader is initialized and active.
         getSupportLoaderManager().initLoader(ID_POLICY_LOADER, null, this);
 
-        PolicySyncUtils.startImmediateSync(this);
+        // PolicySyncUtils's initialize method instead of startImmediateSync
+        PolicySyncUtils.initialize(this);
+
     }
 
     // This method will make the View for the policy data visible and hide the error message.
