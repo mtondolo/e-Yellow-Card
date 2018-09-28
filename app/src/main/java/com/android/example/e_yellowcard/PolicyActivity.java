@@ -14,6 +14,7 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.android.example.e_yellowcard.data.PolicyContract;
+import com.android.example.e_yellowcard.utils.FakePolicyDataUtils;
 
 public class PolicyActivity extends AppCompatActivity implements
         PolicyAdapter.PolicyAdapterOnClickHandler,
@@ -55,6 +56,8 @@ public class PolicyActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_policy);
+
+        FakePolicyDataUtils.insertFakePolicyData(this);
 
         /*
          * Using findViewById, we get a reference to our RecyclerView from xml. This allows us to
