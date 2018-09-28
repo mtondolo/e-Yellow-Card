@@ -1,7 +1,10 @@
 package com.android.example.e_yellowcard.utils;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.text.TextUtils;
+
+import com.android.example.e_yellowcard.data.PolicyContract;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -16,7 +19,7 @@ public class JSONUtils {
      * @return Array of Strings describing policies data
      * @throws JSONException If JSON data cannot be properly parsed
      */
-    public static String[] getSimpleYCPolicyStringFromJson(Context context, String ycPolicyJsonStr)
+    public static ContentValues[] getSimpleYCPolicyStringFromJson(Context context, String ycPolicyJsonStr)
             throws JSONException {
 
         // Policy item. Each policy item is an element of the "attributes" array
@@ -31,9 +34,6 @@ public class JSONUtils {
         final String YC_VEHICLE_REG = "vehicleRegistrationNumber";
         final String YC_STATUS_DETAILS = "name";
 
-        // String array to hold each policy item string */
-        String[] parsedYCPolicyData = null;
-
         // If the JSON string is empty or null, then return early.
         if (TextUtils.isEmpty(ycPolicyJsonStr)) {
             return null;
@@ -41,7 +41,7 @@ public class JSONUtils {
 
         JSONArray ycPolicyArray = new JSONArray(ycPolicyJsonStr);
 
-        parsedYCPolicyData = new String[ycPolicyArray.length()];
+        ContentValues[] policyContentValues = new ContentValues[ycPolicyArray.length()];
 
         for (int i = 0; i < ycPolicyArray.length(); i++) {
 
@@ -65,9 +65,15 @@ public class JSONUtils {
             JSONObject ycPolicyStatus = ycPolicyDetails.getJSONObject(YC_STATUS);
             ycStatusDetails = ycPolicyStatus.getString(YC_STATUS_DETAILS);
 
-            parsedYCPolicyData[i] = ycDays + " - " + ycNumber + " - " + ycVehicleReg + " -" + ycStatusDetails;
+            ContentValues policyValues = new ContentValues();
+            policyValues.put(PolicyContract.PolicyEntry.COLUMN_DAYS, ycDays);
+            policyValues.put(PolicyContract.PolicyEntry.COLUMN_NUMBER, ycNumber);
+            policyValues.put(PolicyContract.PolicyEntry.COLUMN_REG, ycVehicleReg);
+            policyValues.put(PolicyContract.PolicyEntry.COLUMN_STATUS, ycStatusDetails);
+            policyContentValues[i] = policyValues;
+
         }
 
-        return parsedYCPolicyData;
+        return policyContentValues;
     }
 }

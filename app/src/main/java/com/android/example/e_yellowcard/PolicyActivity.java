@@ -14,7 +14,7 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.android.example.e_yellowcard.data.PolicyContract;
-import com.android.example.e_yellowcard.utils.FakePolicyDataUtils;
+import com.android.example.e_yellowcard.sync.PolicySyncUtils;
 
 public class PolicyActivity extends AppCompatActivity implements
         PolicyAdapter.PolicyAdapterOnClickHandler,
@@ -56,8 +56,6 @@ public class PolicyActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_policy);
-
-        FakePolicyDataUtils.insertFakePolicyData(this);
 
         /*
          * Using findViewById, we get a reference to our RecyclerView from xml. This allows us to
@@ -104,6 +102,7 @@ public class PolicyActivity extends AppCompatActivity implements
         // Ensures a loader is initialized and active.
         getSupportLoaderManager().initLoader(ID_POLICY_LOADER, null, this);
 
+        PolicySyncUtils.startImmediateSync(this);
     }
 
     // This method will make the View for the policy data visible and hide the error message.
