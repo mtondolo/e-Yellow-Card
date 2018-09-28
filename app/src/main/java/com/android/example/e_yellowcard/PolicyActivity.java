@@ -1,7 +1,7 @@
 package com.android.example.e_yellowcard;
 
-import android.support.v4.app.LoaderManager.LoaderCallbacks;
-import android.support.v4.content.AsyncTaskLoader;
+import android.database.Cursor;
+import android.net.Uri;
 import android.content.Context;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
@@ -11,23 +11,45 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.example.e_yellowcard.utils.JSONUtils;
-import com.android.example.e_yellowcard.utils.NetworkUtils;
-
-import java.net.URL;
+import com.android.example.e_yellowcard.data.PolicyContract;
 
 public class PolicyActivity extends AppCompatActivity implements
         PolicyAdapter.PolicyAdapterOnClickHandler,
-        LoaderManager.LoaderCallbacks<String[]> {
+        LoaderManager.LoaderCallbacks<Cursor> {
+
+    private static final String TAG = PolicyActivity.class.getSimpleName();
+
+    /*
+     * The columns of data that we are interested in displaying within our MainActivity's list of
+     * policy data.
+     */
+    public static final String[] MAIN_POLICY_PROJECTION = {
+            PolicyContract.PolicyEntry.COLUMN_DAYS,
+            PolicyContract.PolicyEntry.COLUMN_NUMBER,
+            PolicyContract.PolicyEntry.COLUMN_REG,
+            PolicyContract.PolicyEntry.COLUMN_STATUS
+    };
+
+    /*
+     * We store the indices of the values in the array of Strings above to more quickly be able to
+     * access the data from our query. If the order of the Strings above changes, these indices
+     * must be adjusted to match the order of the Strings.
+     */
+    public static final int INDEX_DAYS = 0;
+    public static final int INDEX_NUMBER = 1;
+    public static final int INDEX_REG = 2;
+    public static final int INDEX_STATUS = 3;
+
+    // This ID will be used to identify the Loader responsible for loading our policies.
+    private static final int ID_POLICY_LOADER = 44;
 
     private RecyclerView mRecyclerView;
     private PolicyAdapter mPolicyAdapter;
-    private TextView mErrorMessageDisplay;
     private ProgressBar mLoadingIndicator;
-    private static final int POLICY_LOADER_ID = 0;
+
+    private int mPosition = RecyclerView.NO_POSITION;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,9 +61,6 @@ public class PolicyActivity extends AppCompatActivity implements
          * do things like set the adapter of the RecyclerView and toggle the visibility.
          */
         mRecyclerView = (RecyclerView) findViewById(R.id.recyclerview_policy);
-
-        /* This TextView is used to display errors and will be hidden if there are no errors */
-        mErrorMessageDisplay = (TextView) findViewById(R.id.tv_error_message_display);
 
         /*
          * The ProgressBar that will indicate to the user that we are loading data. It will be
@@ -66,56 +85,45 @@ public class PolicyActivity extends AppCompatActivity implements
         mRecyclerView.setHasFixedSize(true);
 
         /*
-         * The NewsAdapter is responsible for linking our news data with the Views that will end up
-         * displaying our news data.
+         * The PolicyAdapter is responsible for linking our policy data with the Views that will end up
+         * displaying our policy data.
          */
-        mPolicyAdapter = new PolicyAdapter(this);
+        mPolicyAdapter = new PolicyAdapter(this, this);
 
         /*
-         * Use mRecyclerView.setAdapter and pass in mNewsAdapter.
+         * Use mRecyclerView.setAdapter and pass in mPolicyAdapter.
          * Setting the adapter attaches it to the RecyclerView in our layout.
          */
         mRecyclerView.setAdapter(mPolicyAdapter);
 
-        // This ID will uniquely identify the Loader.
-        int loaderId = POLICY_LOADER_ID;
-
-        /*
-         * From PolicyActivity, we have implemented the LoaderCallbacks interface with the type of
-         * String array.
-         */
-        LoaderCallbacks<String[]> callback = PolicyActivity.this;
-
-        // The second parameter of the initLoader method below is a Bundle.
-        Bundle bundleForLoader = null;
+        showLoading();
 
         // Ensures a loader is initialized and active.
-        getSupportLoaderManager().initLoader(loaderId, bundleForLoader, callback);
+        getSupportLoaderManager().initLoader(ID_POLICY_LOADER, null, this);
 
     }
 
-    /**
-     * This method will make the View for the news data visible and hide the error message.
-     */
+    // This method will make the View for the policy data visible and hide the error message.
     private void showPolicyDataView() {
-        /* First, make sure the error is invisible */
-        mErrorMessageDisplay.setVisibility(View.INVISIBLE);
-        /* Then, make sure the policy data is visible */
+        /* First, hide the loading indicator */
+        mLoadingIndicator.setVisibility(View.INVISIBLE);
+        /* Finally, make sure the weather data is visible */
         mRecyclerView.setVisibility(View.VISIBLE);
     }
 
     /**
-     * This method will make the error message visible and hide the news View.
+     * This method will make the loading indicator visible and hide the policy View and error
+     * message.
      */
-    private void showErrorMessage() {
-        /* First, hide the currently visible data */
+    private void showLoading() {
+        /* Then, hide the policy data */
         mRecyclerView.setVisibility(View.INVISIBLE);
-        /* Then, show the error */
-        mErrorMessageDisplay.setVisibility(View.VISIBLE);
+        /* Finally, show the loading indicator */
+        mLoadingIndicator.setVisibility(View.VISIBLE);
     }
 
     /**
-     * This method is overridden by the NewsActivity class in order to handle RecyclerView item
+     * This method is overridden by the PolicyActivity class in order to handle RecyclerView item
      * clicks.
      */
     @Override
@@ -129,85 +137,40 @@ public class PolicyActivity extends AppCompatActivity implements
      * Instantiate and return a new Loader for the given ID.
      */
     @Override
-    public Loader<String[]> onCreateLoader(int id, Bundle loaderArgs) {
-
-        return new AsyncTaskLoader<String[]>(this) {
-
-            /* This String array will hold and help cache our policy data */
-            String[] mPolicyData = null;
-
-            /**
-             * Subclasses of AsyncTaskLoader must implement this to take care of loading their data.
-             */
-            @Override
-            protected void onStartLoading() {
-                if (mPolicyData != null) {
-                    deliverResult(mPolicyData);
-                } else {
-                    mLoadingIndicator.setVisibility(View.VISIBLE);
-                    forceLoad();
-                }
-            }
-
-            /**
-             * This is the method of the AsyncTaskLoader that will load and parse the JSON data
-             * from Policy API in the background.
-             */
-            @Override
-            public String[] loadInBackground() {
-                URL ycPolicyRequestUrl = NetworkUtils.buildYCPoliciesUrl();
-                try {
-                    String jsonYCPolicyResponse = NetworkUtils
-                            .getResponseFromHttpUrl(ycPolicyRequestUrl);
-
-                    String[] simpleJsonYCPolicyData = JSONUtils
-                            .getSimpleYCPolicyStringFromJson(PolicyActivity.this, jsonYCPolicyResponse);
-                    return simpleJsonYCPolicyData;
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            }
-
-            /**
-             * Sends the result of the load to the registered listener.
-             */
-            @Override
-            public void deliverResult(String[] data) {
-                mPolicyData = data;
-                super.deliverResult(data);
-            }
-        };
-    }
-
-    /**
-     * Called when a previously created loader has finished its load.
-     */
-    @Override
-    public void onLoadFinished(Loader<String[]> loader, String[] data) {
-        mLoadingIndicator.setVisibility(View.INVISIBLE);
-        mPolicyAdapter.setPolicyData(data);
-        if (null == data) {
-            showErrorMessage();
-        } else {
-            showPolicyDataView();
+    public Loader<Cursor> onCreateLoader(int loaderId, Bundle bundle) {
+        switch (loaderId) {
+            case ID_POLICY_LOADER:
+                Uri policyQueryUri = PolicyContract.PolicyEntry.CONTENT_URI;
+                return new android.support.v4.content.CursorLoader(this,
+                        policyQueryUri,
+                        MAIN_POLICY_PROJECTION,
+                        null,
+                        null,
+                        null
+                );
+            default:
+                throw new RuntimeException("Loader Not Implemented: " + loaderId);
         }
-
     }
 
-    /**
-     * Called when a previously created loader is being reset, and thus
-     * making its data unavailable.
-     */
+    // Called when a previously created loader has finished its load.
     @Override
-    public void onLoaderReset(Loader<String[]> loader) {
-        /*
-         * We aren't using this method at the moment, but we are required to Override
-         * it to implement the LoaderCallbacks<String> interface
-         */
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        mPolicyAdapter.swapCursor(data);
+        if (mPosition == RecyclerView.NO_POSITION) mPosition = 0;
+        mRecyclerView.smoothScrollToPosition(mPosition);
+        if (data.getCount() != 0) showPolicyDataView();
     }
 
+    // Called when a previously created loader is being reset, and thus making its data unavailable.
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        /*
+         * Since this Loader's data is now invalid, we need to clear the Adapter that is
+         * displaying the data.
+         */
+        mPolicyAdapter.swapCursor(null);
+    }
 }
 
 

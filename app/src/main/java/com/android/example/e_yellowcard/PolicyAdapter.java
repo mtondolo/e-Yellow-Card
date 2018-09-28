@@ -1,6 +1,7 @@
 package com.android.example.e_yellowcard;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,7 +10,8 @@ import android.widget.TextView;
 
 public class PolicyAdapter extends RecyclerView.Adapter<PolicyAdapter.PolicyAdapterViewHolder> {
 
-    private String[] mPolicyData;
+    /* The context we use to utility methods, app resources and layout inflaters */
+    private final Context mContext;
 
     /*
      * An on-click handler that we've defined to make it easy for an Activity to interface with
@@ -24,10 +26,13 @@ public class PolicyAdapter extends RecyclerView.Adapter<PolicyAdapter.PolicyAdap
         void onClick(String policyItem);
     }
 
+    private Cursor mCursor;
+
     /**
-     * Creates a NewsAdapter.
+     * Creates a PolicyAdapter.
      */
-    public PolicyAdapter(PolicyAdapterOnClickHandler clickHandler) {
+    public PolicyAdapter(Context context, PolicyAdapterOnClickHandler clickHandler) {
+        mContext = context;
         mClickHandler = clickHandler;
     }
 
@@ -55,8 +60,22 @@ public class PolicyAdapter extends RecyclerView.Adapter<PolicyAdapter.PolicyAdap
     @Override
     public void onBindViewHolder(PolicyAdapterViewHolder policyAdapterViewHolder, int position) {
 
-        // Set the text of the TextView to the policy for this list item's position
-        String policyItem = mPolicyData[position];
+        // Move the cursor to the appropriate position
+        mCursor.moveToPosition(position);
+
+        /*******************
+         * Policy Item *
+         *******************/
+
+        // Read numdays, yellowCardNumber, vehicleRegistrationNumber and name from the cursor
+        String numdays = mCursor.getString(PolicyActivity.INDEX_DAYS);
+        String yellowCardNumber = mCursor.getString(PolicyActivity.INDEX_NUMBER);
+        String vehicleRegistrationNumber = mCursor.getString(PolicyActivity.INDEX_REG);
+        String status = mCursor.getString(PolicyActivity.INDEX_STATUS);
+
+        // Display the summary that we created above
+        String policyItem = numdays + " - " + yellowCardNumber
+                + " - " + vehicleRegistrationNumber + " - " + status;
         policyAdapterViewHolder.mPolicyTextView.setText(policyItem);
 
     }
@@ -66,8 +85,14 @@ public class PolicyAdapter extends RecyclerView.Adapter<PolicyAdapter.PolicyAdap
      */
     @Override
     public int getItemCount() {
-        if (null == mPolicyData) return 0;
-        return mPolicyData.length;
+        if (null == mCursor) return 0;
+        return mCursor.getCount();
+    }
+
+    // Swaps the cursor used by the PolicyAdapter for its policy data.
+    void swapCursor(Cursor newCursor) {
+        mCursor = newCursor;
+        notifyDataSetChanged();
     }
 
     /**
@@ -88,17 +113,8 @@ public class PolicyAdapter extends RecyclerView.Adapter<PolicyAdapter.PolicyAdap
 
         @Override
         public void onClick(View v) {
-            int adapterPosition = getAdapterPosition();
-            String policyItem = mPolicyData[adapterPosition];
+            String policyItem = mPolicyTextView.getText().toString();
             mClickHandler.onClick(policyItem);
         }
-    }
-
-    /**
-     * This method is used to set the policy on a PolicyAdapter if we've already created one.
-     */
-    public void setPolicyData(String[] policyData) {
-        mPolicyData = policyData;
-        notifyDataSetChanged();
     }
 }
